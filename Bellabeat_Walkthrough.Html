@@ -1,0 +1,241 @@
+Sure! Here is the R markdown code you provided converted into an HTML document:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bellabeat Case Study - R markdown</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2E86C1;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        ul li {
+            margin-bottom: 10px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bellabeat Case Study - R markdown</h1>
+    <p><strong>Author:</strong> John Okoye</p>
+    <p><strong>Date:</strong> 23 Mar 2023</p>
+
+    <h2>Loading Packages and Data sets</h2>
+    <p>Since we already know from the README.MD file that our data is credible and can answer our business question, let us proceed to data wrangling and analysis.</p>
+
+    <pre><code>library(tidyverse) #General purpose
+library(janitor) #For data cleaning
+library(lubridate) #Working with dates
+library(skimr) #For summary statistics
+library(ggpubr) #For data viz
+library(patchwork) #For plot composition
+
+# Importing Data sets
+dailyActivity_merged &lt;- read_csv("Raw Data/dailyActivity_merged.csv")
+sleepDay_merged &lt;- read_csv("Raw Data/sleepDay_merged.csv")
+weightLogInfo_merged &lt;- read_csv("Raw Data/weightLogInfo_merged.csv")
+
+# Saving Data sets to Data frames
+Activity &lt;- dailyActivity_merged
+Sleep &lt;- sleepDay_merged
+Weight &lt;- weightLogInfo_merged
+
+# To get columns relevant for analysis
+Activity &lt;- Activity %&gt;% select(Id, ActivityDate, Calories, TotalSteps, TotalDistance, SedentaryMinutes)
+  head(Activity)
+
+Sleep &lt;- Sleep %&gt;% select(Id, SleepDay, TotalMinutesAsleep, TotalTimeInBed)
+  head(Sleep)
+
+Weight &lt;- Weight %&gt;% select(Id, Date, WeightKg, BMI)
+  head(Weight)
+
+# To get number of unique customer ID
+n_unique(Activity$Id)
+n_unique(Sleep$Id)
+n_unique(Weight$Id)
+
+# To check for duplicates and NA values in the data set
+sum(duplicated(Activity)) 
+sum(duplicated(Sleep))
+sum(duplicated(Weight))
+
+sum(is.na(Activity))
+sum(is.na(Sleep))
+sum(is.na(Weight))
+
+# To drop NA entries and duplicates 
+Activity &lt;- Activity %&gt;%
+  distinct() %&gt;% 
+  drop_na()
+
+Sleep &lt;- Sleep %&gt;%
+  distinct() %&gt;% 
+  drop_na()
+
+Weight &lt;- Weight %&gt;% 
+  distinct()
+
+# To change column name and date format for the date columns 
+Activity &lt;- Activity %&gt;% 
+  rename(date = ActivityDate) %&gt;% 
+  mutate(date = as_date(date, format = "%m/%d/%Y"))
+
+Sleep &lt;- Sleep %&gt;%
+  rename(date = SleepDay) %&gt;%
+  mutate(date = as_date(date,format ="%m/%d/%Y %I:%M:%S %p"))
+
+Weight &lt;- Weight %&gt;%
+  rename(date = Date) %&gt;%
+  mutate(date = as_date(date,format ="%m/%d/%Y %I:%M:%S %p"))
+
+head(Activity)
+head(Sleep)
+head(Weight)
+</code></pre>
+
+    <h2>Analysis and Visuals</h2>
+    <pre><code># To summarize the data set
+Activity_Avg &lt;- Activity %&gt;% select(Id, Calories, TotalSteps, TotalDistance, SedentaryMinutes) %&gt;% 
+  group_by(Id) %&gt;% 
+  summarize(avg_calories = mean(Calories), avg_steps = mean(TotalSteps), 
+            avg_distance = mean(TotalDistance), sedentary_avg = mean(SedentaryMinutes))
+head(Activity_Avg)
+
+Sleep_Avg &lt;- Sleep %&gt;% select(Id, TotalMinutesAsleep, TotalTimeInBed) %&gt;% 
+  group_by(Id) %&gt;% 
+  summarize(avg_timeinbed = mean(TotalTimeInBed), avg_min_asleep = mean(TotalMinutesAsleep))
+head(Sleep_Avg)
+
+Weight_Avg &lt;- Weight %&gt;% select(Id, WeightKg, BMI) %&gt;%
+  group_by(Id) %&gt;% 
+  summarize(avg_weight = mean(WeightKg), avg_BMI = mean(BMI))
+head(Weight_Avg)
+
+# To merge the data sets for ease of analyzing 
+Daily_activity_sleep &lt;- merge(Activity, Sleep, by=c ("Id", "date")) %&gt;% 
+  mutate(weekday = weekdays(date))
+head(Daily_activity_sleep)
+
+# To get daily insights
+weekday_summary &lt;- Daily_activity_sleep %&gt;%
+  mutate(sedentary_hours= SedentaryMinutes / 60, 
+         hours_asleep = TotalMinutesAsleep / 60, hours_in_bed = TotalMinutesAsleep / 60)
+head(weekday_summary)
+
+weekday_summary$weekday &lt;- ordered(weekday_summary$weekday, 
+  levels=c("Monday", "Tuesday", "Wednesday", "Thursday","Friday", "Saturday", "Sunday"))
+
+weekday_summary &lt;- weekday_summary %&gt;%
+  group_by(weekday) %&gt;%
+  summarize (calories = mean(Calories), steps = mean(TotalSteps), 
+             distance = mean(TotalDistance), sedentary_hours = mean(sedentary_hours),
+             hours_asleep = mean(hours_asleep), hours_in_bed = mean(hours_in_bed))
+head(weekday_summary)
+
+# Visualizations for daily calories consumption  
+ggarrange (
+  ggplot(weekday_summary) +
+    geom_col(mapping = aes(weekday, calories), fill = ("#12a4d9")) +
+    labs(title = "Calories consumption on weekdays", x = "", y = "") +
+    theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1)),
+  ggplot(weekday_summary) +
+    geom_col(mapping = aes(weekday, hours_asleep), fill = ("#6b7b8c")) + 
+    geom_hline(yintercept = 8) +
+    labs(title = "Hours asleep per weekday", x = "", y = "") +
+    theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1))
+)  
+
+# Daily steps and distance
+ggarrange (
+  ggplot(weekday_summary) +
+    geom_col(mapping = aes(x = weekday, y = steps), fill = "#85e0e0") +
+    geom_hline(yintercept = 8533) +
+    labs(title = "Daily steps per weekday", x= "", y = "") +
+    theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1)),
+  ggplot(weekday_summary) +
+    geom_col(mapping = aes(x = weekday, y = distance), fill = "#6b7b8c")+
+    labs(title = "Distance per weekday (km)", x= "", y = "") +
+    theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1))
+)
+
+# Relationships
+ggarrange(
+  ggplot(Daily_activity_sleep, aes(x= TotalSteps, y= Calories))+
+    geom_jitter() +
+    geom_smooth(color = "red") + 
+    labs(title = "Daily steps vs Calories", x = "Daily steps", y= "Calories") +
+    theme(panel.background = element_blank(),
+          plot.title = element_text( size=14)), 
+  ggplot(Daily_activity_sleep, aes(x= SedentaryMinutes, y=Calories))+
+    geom_jitter() +
+    geom_smooth(color = "red") + 
+    labs(title = "Sedentary Minutes vs Calories", x = "Sedentary Minutes", y= "Calories") +
+    theme(panel.background = element_blank(),
+          plot.title = element_text( size=14))
+)
+
+# Daily use
+Daily_use &lt;- Daily_activity_sleep %&gt;%
+  group_by(Id) %&gt;%
+  summarize(days_used=n()) %&gt;%
+  mutate(usage_level = case_when(
+    days_used &gt;= 1 &amp; days_used &lt;= 10 ~ "low use",
+    days_used &gt;= 11 &amp; days_used &lt;= 20 ~ "moderate use", 
+    days_used &gt;= 21 &amp; days_used &lt;= 31 ~ "high use", 
+  ))
+head(Daily_use)
+
+# Percentage of total
+daily_use_perc &lt;- Daily_use %&gt;% 
+  group_by(usage_level) %&gt;% 
+  summarize
+
+(level_totals = n()) %&gt;% 
+  mutate(total = sum(level_totals)) %&gt;%
+  group_by(usage_level) %&gt;% 
+  summarize(total_perc = level_totals/ total) %&gt;%
+  mutate(labels = scales::percent(total_perc))
+head(daily_use_perc)
+
+# Visual of daily use 
+daily_use_perc %&gt;%
+  ggplot(aes(x="",y=total_perc, fill=usage_level)) +
+  geom_bar(stat = "identity", width = 1)+
+  coord_polar("y", start=0)+
+  theme_minimal()+
+  theme(axis.title.x= element_blank(),
+        axis.title.y = element_blank(),
+        panel.border = element_blank(), 
+        panel.grid = element_blank(), 
+        axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, size=14, face = "bold")) +
+  geom_text(aes(label = labels),
+            position = position_stack(vjust = 0.5))+
+  scale_fill_manual(values = c("#004d99","#3399ff","#cce6ff"),
+                    labels = c("High use - 21 to 31 days",
+                               "Moderate use - 11 to 20 days",
+                               "Low use - 1 to 10 days"))+
+  labs(title="Daily use of smart device")
+</code></pre>
+</body>
+</html>
+```
+
