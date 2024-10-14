@@ -1,6 +1,6 @@
 ---
 title: "Bellabeat Case Study - R markdown"
-author: 'John Okoye'
+author: 'Elijah Kevwe Utuyo'
 date: '23 Mar 2023'
 output:
   html_document:
